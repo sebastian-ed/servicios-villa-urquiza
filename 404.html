@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Servicios Villa Urquiza</title>
+  <meta name="description" content="Catálogo local de servicios en Villa Urquiza. Encontrá proveedores, filtrá por categoría y contactalos directo por WhatsApp o email." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <div class="container header-grid">
+        <div>
+          <span class="eyebrow">Directorio local</span>
+          <h1>Servicios Villa Urquiza</h1>
+          <p class="hero-copy">Una vidriera digital para mostrar proveedores del barrio y facilitar contacto directo con potenciales clientes.</p>
+        </div>
+        <div class="hero-actions">
+          <button id="openAdminBtn" class="btn btn-secondary">Panel admin</button>
+          <a href="#catalogo" class="btn btn-primary">Ver servicios</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="search-section" id="catalogo">
+        <div class="container">
+          <div class="toolbar card">
+            <div class="toolbar-grid">
+              <div class="field grow">
+                <label for="searchInput">Buscar</label>
+                <input id="searchInput" type="search" placeholder="Ej: plomero, electricista, peluquería, cerrajería" />
+              </div>
+              <div class="field">
+                <label for="categoryFilter">Categoría</label>
+                <select id="categoryFilter">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="sortSelect">Ordenar</label>
+                <select id="sortSelect">
+                  <option value="rating_desc">Mejor valorados</option>
+                  <option value="name_asc">Nombre A-Z</option>
+                  <option value="newest">Más recientes</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="stats-row">
+            <div class="stat card">
+              <span class="stat-label">Proveedores visibles</span>
+              <strong id="providersCount">0</strong>
+            </div>
+            <div class="stat card">
+              <span class="stat-label">Categorías</span>
+              <strong id="categoriesCount">0</strong>
+            </div>
+            <div class="stat card">
+              <span class="stat-label">Reseñas aprobadas</span>
+              <strong id="reviewsCount">0</strong>
+            </div>
+          </div>
+
+          <div id="providersGrid" class="providers-grid"></div>
+          <div id="emptyState" class="empty-state card hidden">
+            <h2>Sin resultados</h2>
+            <p>No hay proveedores que coincidan con esos filtros.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="providerModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close="providerModal"></div>
+    <div class="modal-panel modal-panel-lg">
+      <button class="modal-close" data-close="providerModal" aria-label="Cerrar">×</button>
+      <div id="providerDetail"></div>
+    </div>
+  </div>
+
+  <div id="adminModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close="adminModal"></div>
+    <div class="modal-panel admin-panel">
+      <button class="modal-close" data-close="adminModal" aria-label="Cerrar">×</button>
+      <section id="adminLoginView">
+        <div class="admin-header">
+          <h2>Acceso administrador</h2>
+          <p>Ingresá con un usuario creado en Supabase Auth y marcado como admin en la tabla <code>profiles</code>.</p>
+        </div>
+        <form id="adminLoginForm" class="stack-lg">
+          <div class="field">
+            <label for="adminEmail">Email</label>
+            <input id="adminEmail" name="email" type="email" required />
+          </div>
+          <div class="field">
+            <label for="adminPassword">Contraseña</label>
+            <input id="adminPassword" name="password" type="password" required />
+          </div>
+          <button type="submit" class="btn btn-primary full">Ingresar</button>
+        </form>
+      </section>
+
+      <section id="adminDashboardView" class="hidden">
+        <div class="admin-topbar">
+          <div>
+            <h2>Panel admin</h2>
+            <p class="muted">Alta, edición y baja lógica de proveedores, categorías y moderación de reseñas.</p>
+          </div>
+          <button id="logoutBtn" class="btn btn-secondary">Cerrar sesión</button>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="providersTab">Proveedores</button>
+          <button class="tab-btn" data-tab="categoriesTab">Categorías</button>
+          <button class="tab-btn" data-tab="reviewsTab">Reseñas</button>
+        </div>
+
+        <div id="providersTab" class="tab-pane active">
+          <form id="providerForm" class="form-grid card">
+            <input type="hidden" id="providerId" />
+            <div class="field full-span">
+              <label for="providerName">Nombre del proveedor</label>
+              <input id="providerName" required />
+            </div>
+            <div class="field full-span">
+              <label for="providerShortDescription">Descripción corta</label>
+              <input id="providerShortDescription" maxlength="160" placeholder="Texto breve para la tarjeta" required />
+            </div>
+            <div class="field full-span">
+              <label for="providerDescription">Descripción completa</label>
+              <textarea id="providerDescription" rows="5" required></textarea>
+            </div>
+            <div class="field">
+              <label for="providerAddress">Dirección</label>
+              <input id="providerAddress" placeholder="Ej: Av. Triunvirato 4000" />
+            </div>
+            <div class="field">
+              <label for="providerNeighborhood">Barrio</label>
+              <input id="providerNeighborhood" value="Villa Urquiza" />
+            </div>
+            <div class="field">
+              <label for="providerWhatsapp">WhatsApp</label>
+              <input id="providerWhatsapp" placeholder="54911..." />
+            </div>
+            <div class="field">
+              <label for="providerEmail">Email</label>
+              <input id="providerEmail" type="email" />
+            </div>
+            <div class="field">
+              <label for="providerWebsite">Sitio web</label>
+              <input id="providerWebsite" placeholder="https://..." />
+            </div>
+            <div class="field">
+              <label for="providerImage">Imagen URL</label>
+              <input id="providerImage" placeholder="https://..." />
+            </div>
+            <div class="field full-span">
+              <label for="providerCategories">Categorías</label>
+              <select id="providerCategories" multiple size="6"></select>
+              <small>Ctrl/Cmd + click para seleccionar varias.</small>
+            </div>
+            <div class="field checkbox-inline">
+              <input id="providerActive" type="checkbox" checked />
+              <label for="providerActive">Proveedor activo</label>
+            </div>
+            <div class="actions full-span">
+              <button type="submit" class="btn btn-primary">Guardar proveedor</button>
+              <button type="button" id="resetProviderBtn" class="btn btn-secondary">Limpiar</button>
+            </div>
+          </form>
+
+          <div class="table-card card">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Proveedor</th>
+                    <th>Categorías</th>
+                    <th>Contacto</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="providersTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="categoriesTab" class="tab-pane">
+          <form id="categoryForm" class="card inline-form">
+            <input type="hidden" id="categoryId" />
+            <div class="field grow">
+              <label for="categoryName">Nombre de categoría</label>
+              <input id="categoryName" placeholder="Ej: Electricistas" required />
+            </div>
+            <div class="actions">
+              <button type="submit" class="btn btn-primary">Guardar categoría</button>
+              <button type="button" id="resetCategoryBtn" class="btn btn-secondary">Limpiar</button>
+            </div>
+          </form>
+
+          <div class="table-card card">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Categoría</th>
+                    <th>Slug</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="categoriesTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="reviewsTab" class="tab-pane">
+          <div class="table-card card">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Proveedor</th>
+                    <th>Autor</th>
+                    <th>Puntaje</th>
+                    <th>Comentario</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="reviewsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <template id="providerCardTemplate">
+    <article class="provider-card card">
+      <div class="provider-image-wrap">
+        <img class="provider-image" alt="" />
+      </div>
+      <div class="provider-card-body">
+        <div class="provider-card-top">
+          <h3 class="provider-name"></h3>
+          <span class="rating-chip"></span>
+        </div>
+        <p class="provider-short"></p>
+        <div class="chip-row"></div>
+        <div class="provider-card-actions">
+          <button class="btn btn-primary btn-sm details-btn">Ver detalle</button>
+          <a class="btn btn-secondary btn-sm whatsapp-btn" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+        </div>
+      </div>
+    </article>
+  </template>
+</body>
+</html>
